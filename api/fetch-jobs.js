@@ -25,7 +25,64 @@ const QUERIES = [
   "data entry",
 ];
 
+// Kept broad on purpose so both NWA and remote roles get fetched. The
+// location filter below then narrows results to Northwest Arkansas plus
+// genuine remote, removing the rest of the state (Little Rock, Conway, etc.).
 const LOCATION = "Arkansas";
+
+// Northwest Arkansas cities to keep.
+const NWA_CITIES = [
+  "bentonville",
+  "rogers",
+  "fayetteville",
+  "springdale",
+  "bella vista",
+  "lowell",
+  "centerton",
+  "cave springs",
+  "johnson",
+  "siloam springs",
+  "pea ridge",
+  "gravette",
+  "gentry",
+  "tontitown",
+  "elm springs",
+  "farmington",
+  "prairie grove",
+  "greenland",
+  "west fork",
+];
+
+// Phrases that indicate a remote role.
+const REMOTE_HINTS = [
+  "remote",
+  "anywhere",
+  "work from home",
+  "work at home",
+  "wfh",
+  "virtual",
+  "telework",
+  "telecommute",
+];
+
+// True when a job location names an NWA city or clearly indicates remote.
+function isNwaOrRemote(location) {
+  if (!location) return false;
+  const text = String(location).toLowerCase();
+  for (const hint of REMOTE_HINTS) {
+    if (text.includes(hint)) return true;
+  }
+  for (const city of NWA_CITIES) {
+    if (text.includes(city)) return true;
+  }
+  return false;
+}
+
+// Filters normalized jobs down to NWA plus remote.
+function filterNwaOrRemote(jobs) {
+  if (!Array.isArray(jobs)) return [];
+  return jobs.filter((job) => isNwaOrRemote(job && job.location));
+}
 
 async function fetchJSearch(query) {
   const url =
@@ -76,7 +133,7 @@ export async function fetchAllJobs() {
   }
   const settled = await Promise.allSettled(tasks);
   const all = settled.flatMap((r) => (r.status === "fulfilled" ? r.value : []));
-  return dedupe(all);
+  return filterNwaOrRemote(dedupe(all));
 }
 
 export default async function handler(req, res) {
